@@ -35,3 +35,23 @@ repos:
     rev: v1.96.0
     hooks:
       - id: terraform_fmt
+
+  # -----------------------------
+  # Module docs — generated below the marker in each README
+  # -----------------------------
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.0
+    hooks:
+      - id: terraform_docs
+        args: [--hook-config=--path-to-file=README.md, --hook-config=--add-to-existing-file=true]
+
+  # -----------------------------
+  # Conventional commits — this repo is versioned, so the commit message
+  # decides the version bump. A non-conforming message produces NO release.
+  # -----------------------------
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.4.1
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [pre-push]
