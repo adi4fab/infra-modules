@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
 
-# Tag-only release.
+# Tag-only release, and the tag points at the ACTUAL commit on main.
 #
-# The version lives in git tags, not in a file (see .cz.toml). So this job
-# creates a tag and pushes ONLY that tag — it never pushes to main, and
-# therefore never needs to bypass the branch ruleset.
+# We do NOT let commitizen create the tag. `cz bump` makes its own commit
+# (it writes CHANGELOG.md) and tags THAT — producing a tag whose tree differs
+# from main and which `git describe` cannot see. Instead we ask commitizen only
+# for the next version number, then tag GITHUB_SHA ourselves.
 #
-# Pushing only refs/tags/* is deliberate: even if a local commit is created in
-# the runner, it is discarded with the runner. main cannot drift from here.
+# Nothing is ever pushed to main, so no ruleset bypass is needed.
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # commitizen needs full history and all tags
+          fetch-depth: 0          # commitizen needs full history and all tags
 
       - uses: actions/setup-python@v5
         with:
@@ -30,30 +30,38 @@ jobs:
 
       - run: pipx install commitizen
 
-      - name: work out whether anything is releasable
-        id: check
+      - name: next version, if any
+        id: next
         run: |
-          if cz bump --dry-run --yes >/dev/null 2>&1; then
-            echo "releasable=true" >> "$GITHUB_OUTPUT"
+          # --get-next prints just the version, and exits non-zero when no
+          # conventional commits since the last tag warrant a release.
+          if VERSION=$(cz bump --get-next 2>/dev/null); then
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "release=true"     >> "$GITHUB_OUTPUT"
+            echo "next version: v$VERSION"
           else
-            echo "No conventional commits since the last tag. Nothing to release."
-            echo "releasable=false" >> "$GITHUB_OUTPUT"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "No releasable commits since the last tag."
           fi
 
-      - name: create the tag
-        if: steps.check.outputs.releasable == 'true'
+      - name: release notes
+        if: steps.next.outputs.release == 'true'
         run: |
+          cz changelog --unreleased-version "v${{ steps.next.outputs.version }}" \
+            --dry-run --incremental > body.md || echo "No changelog entries." > body.md
+          cat body.md
+
+      - name: tag the commit that is on main
+        if: steps.next.outputs.release == 'true'
+        run: |
+          V="v${{ steps.next.outputs.version }}"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cz bump --yes --changelog-to-stdout > body.md
-          echo "VERSION=$(cz version --project)" >> "$GITHUB_ENV"
-
-      - name: push the tag ONLY
-        if: steps.check.outputs.releasable == 'true'
-        run: git push origin "refs/tags/v${VERSION}"
+          git tag -a "$V" "$GITHUB_SHA" -m "$V"
+          git push origin "refs/tags/$V"      # tags only. main is never touched.
 
       - uses: softprops/action-gh-release@v2
-        if: steps.check.outputs.releasable == 'true'
+        if: steps.next.outputs.release == 'true'
         with:
-          tag_name: v${{ env.VERSION }}
+          tag_name: v${{ steps.next.outputs.version }}
           body_path: body.md
