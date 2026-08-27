@@ -8,7 +8,7 @@ Consumed by `infrastructure-live` repos via `git::` with a pinned `?ref=`.
 
 ```hcl
 terraform {
-  source = "git::git@github.com:adi4fab/infra-modules.git//modules/vpc?ref=v1.2.0"
+  source = "git::git@github.com:adi4fab/infra-modules.git//vpc?ref=v1.2.0"
 }                                                        ↑↑
                                               double slash = subdirectory
 ```
@@ -19,7 +19,7 @@ identical code produces different infrastructure on different days.
 ## Layout
 
 ```
-modules/
+infra-modules/
 ├── vpc/
 │   ├── main.tf
 │   ├── variables.tf
@@ -28,7 +28,7 @@ modules/
 └── <next-module>/
 ```
 
-- One folder per module
+- One folder per module, **at the repo root** — the repo name already says "modules"
 - Every module: `main.tf` · `variables.tf` · `outputs.tf` · `README.md`
 - Modules never hardcode account ids, regions or environment names — those are inputs
 
@@ -48,7 +48,7 @@ git push origin v1.2.0
 Sourcing by tag means you must tag before you can use. While developing, override it:
 
 ```console
-TERRAGRUNT_SOURCE=/path/to/infra-modules//modules/vpc terragrunt plan
+TERRAGRUNT_SOURCE=/path/to/infra-modules//vpc terragrunt plan
 ```
 
 ⚠️ Do **not** work around this by putting a relative path in `source`. It works fine,
