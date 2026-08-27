@@ -1,0 +1,37 @@
+repos:
+  # -----------------------------
+  # Basic repo hygiene
+  # -----------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-yaml
+        # Helm templates are Go templates, not literal YAML — exclude any
+        # chart templates dir. Multi-doc YAML (---) is allowed.
+        args: [--allow-multiple-documents]
+        exclude: /templates/
+
+  # -----------------------------
+  # Secret scanning — blocks the commit locally.
+  # gitleaks is the local gate; a second scanner runs in CI (added in the
+  # CI/CD phase) so a bypassed hook still gets caught server-side.
+  # -----------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # -----------------------------
+  # Terraform formatting ONLY
+  # (No terraform validate — Terragrunt handles that)
+  # -----------------------------
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.0
+    hooks:
+      - id: terraform_fmt

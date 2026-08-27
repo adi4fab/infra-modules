@@ -1,0 +1,12 @@
+# Pinned tool versions. Must match the consuming infrastructure-live repo,
+# or a module can pass here and fail there.
+[tools]
+opentofu = "1.10.6"
+
+[tasks.fmt]
+description = "Format all Terraform"
+run = "tofu fmt -recursive"
+
+[tasks.check-pins]
+description = "Fail if any module source is missing a pinned ?ref="
+run = "! grep -rn 'git::' --include='*.tf' . | grep -v '?ref='"

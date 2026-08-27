@@ -1,0 +1,64 @@
+# Terragrunt cache (CRITICAL)
+.terragrunt-cache/
+
+# Terraform local state & artifacts
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Terraform override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Generated files (if not committed intentionally)
+backend.tf
+provider.tf
+
+# Crash logs
+crash.log
+crash.*.log
+
+
+# IDE / OS junk
+.idea/
+.vscode/
+.DS_Store
+
+# Logs
+*.log
+
+# CLI artifacts
+terraform.rc
+.terraformrc
+
+# Secrets / env files
+.env
+.env.*
+!.env.example
+
+# Private keys & certs — layer 1 of the guard (detect-private-key is layer 3)
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Kubeconfigs — can embed cluster credentials
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+
+# Claude Code
+.claude/worktrees/
+.claude/settings.local.json
+
+# Learning notes live OUTSIDE this repo (../ and ../.claude/) and document the
+# company's internal stack. This repo is PUBLIC — never commit them here.
+tech-stack.md
+roadmap.md
+.claude/tech-stack.md
+.claude/roadmap.md
