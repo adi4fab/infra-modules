@@ -1,7 +1,16 @@
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.1.0"
-version_files = [".cz.toml:version"]
-tag_format = "v$version"          # ONE tag form. Two forms defeat any "is this ref current" tooling.
-update_changelog_on_bump = true
-major_version_zero = false        # A breaking change bumps MAJOR. SemVer that is actually communicated.
+tag_format = "v$version"          # ONE tag form. Two defeat any "is this ref current" tooling.
+major_version_zero = false        # A breaking change bumps MAJOR, visibly.
+
+# The version is derived from GIT TAGS, not stored in a file.
+#
+# Why: a stored version is STATE. If a tag is ever created by hand, or a bump
+# commit fails to land, the file and the tags disagree — and the next automated
+# bump then OVERWRITES an existing tag, silently changing code a consumer is
+# pinned to. That is the single worst failure in a pinned-module design.
+#
+# With scm there is no file, so there is nothing to desync. It is also read-only,
+# so `cz bump` creates a tag and updates nothing — which means the release job
+# never needs to push to main, and therefore never needs to bypass the ruleset.
+version_provider = "scm"

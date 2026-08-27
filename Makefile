@@ -7,16 +7,20 @@ DOCS_MARKER := ### Module Documentation
 # --- parse-time guards -------------------------------------------------------
 # These run BEFORE any target. A missing tool or an uninstalled git hook fails
 # here, locally, with a pointer — instead of silently passing to CI.
-EXECUTABLES := mise pre-commit docker
+EXECUTABLES := mise pre-commit
 _ := $(foreach e,$(EXECUTABLES),\
        $(if $(shell command -v $(e) 2>/dev/null),,\
          $(error "$(e)" not found in PATH — see README Setup)))
 
-ifeq (,$(wildcard $(PROJECT_ROOT)/.git/hooks/pre-commit))
-  $(error git hook not installed — run: pre-commit install)
-endif
-ifeq (,$(wildcard $(PROJECT_ROOT)/.git/hooks/commit-msg))
-  $(error commit-msg hook not installed — run: pre-commit install --hook-type commit-msg)
+# Hook guards are for HUMANS only. A CI checkout legitimately has no git hooks,
+# so enforcing this in CI fails every run for a condition that is not a fault.
+ifndef CI
+  ifeq (,$(wildcard $(PROJECT_ROOT)/.git/hooks/pre-commit))
+    $(error git hook not installed — run: pre-commit install)
+  endif
+  ifeq (,$(wildcard $(PROJECT_ROOT)/.git/hooks/commit-msg))
+    $(error commit-msg hook not installed — run: pre-commit install --hook-type commit-msg)
+  endif
 endif
 
 .guard-%:
