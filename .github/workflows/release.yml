@@ -33,15 +33,29 @@ jobs:
       - name: next version, if any
         id: next
         run: |
-          # --get-next prints just the version, and exits non-zero when no
-          # conventional commits since the last tag warrant a release.
-          if VERSION=$(cz bump --get-next 2>/dev/null); then
+          # --yes is REQUIRED: without it cz prompts (e.g. when no tags exist yet)
+          # and dies with EOFError in CI.
+          #
+          # Exit 21 (NoneIncrementExit) means "no releasable commits" — expected.
+          # ANY OTHER non-zero is a real failure and must fail the job. Treating
+          # every error as "nothing to release" makes a broken step look like a
+          # no-op, which is how a release silently stops happening.
+          set +e
+          VERSION=$(cz bump --get-next --yes 2>/tmp/cz.err)
+          RC=$?
+          set -e
+
+          if [ "$RC" -eq 0 ]; then
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "release=true"     >> "$GITHUB_OUTPUT"
             echo "next version: v$VERSION"
-          else
+          elif [ "$RC" -eq 21 ]; then
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "No releasable commits since the last tag."
+          else
+            echo "cz bump failed with exit $RC:"
+            cat /tmp/cz.err
+            exit "$RC"
           fi
 
       - name: release notes
