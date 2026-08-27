@@ -58,9 +58,7 @@ sibling is invisible and unfixable at scale — `make check-self-ref` fails the 
 
 ## Releasing
 
-Fully automated. **Never tag by hand** — `.cz.toml` holds the version as state, and a
-manual tag desyncs it. The next bump would then overwrite an existing tag, silently
-changing the code a consumer is pinned to.
+Fully automated, and **tag-only**.
 
 | Commit prefix | Bump |
 |---|---|
@@ -68,8 +66,22 @@ changing the code a consumer is pinned to.
 | `feat:` | minor |
 | `BREAKING CHANGE:` | **major** |
 
+- The version lives in **git tags**, not in a file — `version_provider = "scm"`
+- The release job creates a tag and pushes **only** `refs/tags/*`. It never pushes to
+  `main`, so it needs **no bypass** of the branch ruleset
 - One tag form: `v1.2.0`
 - `major_version_zero = false` — a breaking change is visible in the version number
+- The changelog is the **GitHub Release body**, not a committed file, so it cannot drift
+
+### Why no version file
+
+A stored version is **state**. If a tag were ever created by hand, or a bump commit
+failed to land, the file and the tags would disagree — and the next automated bump
+would then **overwrite an existing tag**, silently changing code a consumer is pinned
+to. That is the worst failure available in a pinned-module design.
+
+With no file there is nothing to desync. Tags are also protected by an
+`immutable-version-tags` ruleset — they cannot be moved or deleted, by anyone.
 
 ## CI
 

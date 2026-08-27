@@ -4,26 +4,56 @@ on:
   push:
     branches: [main]
 
-# A bump commit must not trigger another bump.
+# Tag-only release.
+#
+# The version lives in git tags, not in a file (see .cz.toml). So this job
+# creates a tag and pushes ONLY that tag — it never pushes to main, and
+# therefore never needs to bypass the branch ruleset.
+#
+# Pushing only refs/tags/* is deliberate: even if a local commit is created in
+# the runner, it is discarded with the runner. main cannot drift from here.
+
+permissions:
+  contents: write
+
 jobs:
-  bump:
-    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+  release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0        # commitizen needs full history and all tags
 
-      - name: bump version and update changelog
-        uses: commitizen-tools/commitizen-action@master
+      - uses: actions/setup-python@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          changelog_increment_filename: body.md
+          python-version: "3.12"
+
+      - run: pipx install commitizen
+
+      - name: work out whether anything is releasable
+        id: check
+        run: |
+          if cz bump --dry-run --yes >/dev/null 2>&1; then
+            echo "releasable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No conventional commits since the last tag. Nothing to release."
+            echo "releasable=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: create the tag
+        if: steps.check.outputs.releasable == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cz bump --yes --changelog-to-stdout > body.md
+          echo "VERSION=$(cz version --project)" >> "$GITHUB_ENV"
+
+      - name: push the tag ONLY
+        if: steps.check.outputs.releasable == 'true'
+        run: git push origin "refs/tags/v${VERSION}"
 
       - uses: softprops/action-gh-release@v2
+        if: steps.check.outputs.releasable == 'true'
         with:
+          tag_name: v${{ env.VERSION }}
           body_path: body.md
-          tag_name: ${{ env.REVISION }}
