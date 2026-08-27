@@ -108,6 +108,17 @@ git config blame.ignoreRevsFile .git-blame-ignore-revs
 `make` refuses to run until the hooks are installed — a local error with a pointer,
 rather than a CI failure later.
 
+## Why the checks are required, not advisory
+
+A check that runs but does not gate is worse than no check:
+
+- People wait on a red X that does not block
+- People merge past a check they should have read
+- You pay the runner minutes and ignore the signal
+
+`quality-checks` is a **required status check** on `main`. If it is red, the PR
+does not merge.
+
 ## Guardrails
 
 - gitleaks + detect-private-key pre-commit hooks
