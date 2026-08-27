@@ -1,0 +1,7 @@
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = [".cz.toml:version"]
+tag_format = "v$version"          # ONE tag form. Two forms defeat any "is this ref current" tooling.
+update_changelog_on_bump = true
+major_version_zero = false        # A breaking change bumps MAJOR. SemVer that is actually communicated.

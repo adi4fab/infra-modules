@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "comment": "Keeps pre-commit hook pins and provider constraints current. Charizard's hooks went 2 years stale without this.",
+  "packageRules": [
+    {
+      "matchManagers": ["pre-commit"],
+      "groupName": "pre-commit hooks",
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch"]
+    }
+  ]
+}

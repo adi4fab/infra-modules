@@ -2,13 +2,30 @@
 
 Reusable OpenTofu modules. **Blueprints only — this repo creates nothing.**
 
-Consumed by `infrastructure-live` repos via `git::` with a pinned `?ref=`.
+Consumed by infrastructure-live repos via `git::` with a pinned `?ref=`.
 
-## How a module is consumed
+## Layout
+
+```
+<category>/<module>/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── versions.tf
+├── README.md
+└── examples/simple/main.tf
+```
+
+- Categories mirror the live repo: `networking` `kubernetes` `data-stores`
+  `security` `identity` `observability` `ci-cd` `organization`
+- **No `modules/` folder and no module at the repo root** — the repo name already
+  says "modules", and a module sitting next to the categories makes them meaningless
+
+## Consuming a module
 
 ```hcl
 terraform {
-  source = "git::git@github.com:adi4fab/infra-modules.git//modules/vpc?ref=v1.2.0"
+  source = "git::git@github.com:adi4fab/infra-modules.git//networking/vpc?ref=v1.2.0"
 }                                                        ↑↑
                                               double slash = subdirectory
 ```
@@ -16,43 +33,55 @@ terraform {
 ⚠️ **Always `?ref=` a tag.** Without it the module changes under the consumer, and
 identical code produces different infrastructure on different days.
 
-## Layout
+⚠️ **A module change is not live until a consumer bumps its `?ref=`.** Merging here
+publishes a version; it moves no infrastructure.
 
-```
-modules/
-├── vpc/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── README.md
-└── <next-module>/
+## Creating a module
+
+```console
+make new-module CATEGORY=networking NAME=vpc
 ```
 
-- One folder per module
-- Every module: `main.tf` · `variables.tf` · `outputs.tf` · `README.md`
-- Modules never hardcode account ids, regions or environment names — those are inputs
+Scaffolds every required file, including the README with its docs marker. Nothing
+to remember, and no module can end up without docs.
+
+## Internal composition — relative paths only
+
+```hcl
+module "subnets" {
+  source = "../../networking/additional-subnets"   # ✅
+}
+```
+
+**Never** `git::` back into this repo. A module pinned to an old version of its own
+sibling is invisible and unfixable at scale — `make check-self-ref` fails the build.
 
 ## Releasing
 
-```console
-git tag v1.2.0
-git push origin v1.2.0
-```
+Fully automated. **Never tag by hand** — `.cz.toml` holds the version as state, and a
+manual tag desyncs it. The next bump would then overwrite an existing tag, silently
+changing the code a consumer is pinned to.
 
-- **SemVer.** Breaking input/output change → major bump
-- Consumers upgrade by editing `?ref=` — one line, reviewable, revertable
-- A module change is a **release**, not a silent edit
+| Commit prefix | Bump |
+|---|---|
+| `fix:` | patch |
+| `feat:` | minor |
+| `BREAKING CHANGE:` | **major** |
 
-## Local development
+- One tag form: `v1.2.0`
+- `major_version_zero = false` — a breaking change is visible in the version number
 
-Sourcing by tag means you must tag before you can use. While developing, override it:
+## CI
 
-```console
-TERRAGRUNT_SOURCE=/path/to/infra-modules//modules/vpc terragrunt plan
-```
+Every PR runs:
 
-⚠️ Do **not** work around this by putting a relative path in `source`. It works fine,
-nobody changes it back, and you lose versioning permanently.
+- pre-commit — fmt, docs, gitleaks, private keys, commit message shape
+- `make validate` — `tofu validate` on **every module and every example**
+- `make check-pins` — no `git::` source without `?ref=`
+- `make check-self-ref` — no module referencing this repo
+
+`examples/` is the test. It's documentation that cannot go stale, and it needs no
+AWS credentials.
 
 ## Setup
 
@@ -60,11 +89,16 @@ nobody changes it back, and you lose versioning permanently.
 brew install mise
 mise install
 pre-commit install
+pre-commit install --hook-type commit-msg
+git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
+
+`make` refuses to run until the hooks are installed — a local error with a pointer,
+rather than a CI failure later.
 
 ## Guardrails
 
-- **gitleaks** + **detect-private-key** pre-commit hooks
-- **GitHub secret scanning + push protection** (free on public repos)
-- **`main` is protected** — PR required, no force-push, no deletion, no bypass
-- `.gitignore` blocks `.env`, `*.pem`, `*.key`, kubeconfigs, tfstate
+- gitleaks + detect-private-key pre-commit hooks
+- GitHub secret scanning + push protection
+- `main` protected — PR required, no force-push, no deletion, **zero bypass actors**
+- Renovate keeps hook pins and provider constraints current

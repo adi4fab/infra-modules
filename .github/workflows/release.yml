@@ -1,0 +1,29 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+# A bump commit must not trigger another bump.
+jobs:
+  bump:
+    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: bump version and update changelog
+        uses: commitizen-tools/commitizen-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          changelog_increment_filename: body.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: body.md
+          tag_name: ${{ env.REVISION }}

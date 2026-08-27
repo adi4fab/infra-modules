@@ -1,0 +1,29 @@
+name: quality-checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # commitizen-branch needs history
+
+      - uses: jdx/mise-action@v2  # same pinned versions as local
+
+      - uses: pre-commit/action@v3.0.1
+        # terraform_docs runs via Docker, which the runner has.
+        # Skipping it in CI is how doc drift goes unnoticed.
+
+      - name: validate every module and example
+        run: make validate
+
+      - name: "no unpinned git:: sources"
+        run: make check-pins
+
+      - name: "no self-referencing sources"
+        run: make check-self-ref
